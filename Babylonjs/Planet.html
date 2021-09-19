@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+        <title>Babylon Template</title>
+        
+        <script src="https://cdn.babylonjs.com/babylon.js"></script>
+        <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+        <script src="https://cdn.babylonjs.com/viewer/babylon.viewer.js"></script>
+        <script src="https://code.jquery.com/pep/0.4.3/pep.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js"></script>
+        <style>
+            html,body,canvas { margin: 0; padding: 0; width: 100%; height: 100%; font-size: 0; }
+        </style>
+    </head>
+
+   <body>
+    
+    <canvas id="renderCanvas" touch-action="none"></canvas> <!-- touch-action="none" for best results from PEP -->
+
+    
+    <script>
+
+class Background {
+      constructor (scene) {
+          this.skybox = BABYLON.Mesh.CreateBox("skyBox", 10000.0, scene);
+          this.skyboxMaterial = new BABYLON.BackgroundMaterial("skyBox", scene);
+          this.skyboxMaterial.backFaceCulling = false;
+          this.skyboxMaterial.disableLighting = true;
+          var files = [
+                  "https://raw.githubusercontent.com/Babatunde-Fatai/Babylon-Assets/blob/main/textures/skybox/skybox_nx.jpg",
+                  "https://raw.githubusercontent.com/Babatunde-Fatai/Babylon-Assets/blob/main/textures/skybox/skybox_ny.jpg",
+                  "https://raw.githubusercontent.com/Babatunde-Fatai/Babylon-Assets/blob/main/textures/skybox/skybox_nz.jpg",
+                  "https://raw.githubusercontent.com/Babatunde-Fatai/Babylon-Assets/blob/main/textures/skybox/skybox_px.jpg",
+                  "https://raw.githubusercontent.com/Babatunde-Fatai/Babylon-Assets/blob/main/textures/skybox/skybox_py.jpg",
+                  "https://raw.githubusercontent.com/Babatunde-Fatai/Babylon-Assets/blob/main/textures/skybox/skboxy_pz.jpg",
+              ];
+          this.skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture.CreateFromImages(files, scene);
+          this.skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
+          this.skybox.material = this.skyboxMaterial;
+          this.skybox.infiniteDistance = true;
+      }
+  }
+
+        var canvas = document.getElementById("renderCanvas");
+        
+        //creating engine
+        var engine = new BABYLON.Engine(canvas);
+
+        //create scene
+        var scene = new BABYLON.Scene(engine);
+        scene.clearColor = new BABYLON.Color3(0.001, 0.001, 0.001);
+        scene.ambientColor = new BABYLON.Color3(0.001, 0.001, 0.001);
+        //const xrHelper = await WebXRExperienceHelper.CreateAsync(scene);
+
+        var t = 0; //Ecosystem time 
+        //make scene visible -> run renderloop
+        var renderLoop = function () {
+            scene.render();
+            t += 0.001;
+
+            coreSphere.rotation.y = t;
+
+            
+
+        };
+        engine.runRenderLoop(renderLoop);
+
+        // This creates and positions a free camera (non-mesh)
+        var camera = new BABYLON.ArcRotateCamera("camera1", 1, 1, 5, new BABYLON.Vector3(30, 0, 0), scene);
+        
+        camera.attachControl(canvas, true);
+        // This targets the camera to scene origin
+        camera.setTarget(BABYLON.Vector3.Zero());
+        
+        // var freeCamera = new BABYLON.freeCamera("freeCamera", new BABYLON.Vector3(70, 0, -5), scene);
+        // scene.activeCamera = freeCamera;
+        
+
+        // //Adding lights
+        // var light = new BABYLON.PointLight("light", new BABYLON.Vector3(10, 10, 0), scene);
+        // // Default intensity is 1. Let's dim the light a small amount
+        // light.intensity = 10.7;
+
+        // lights
+        var light = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(1, 0.5, 0), scene);
+        light.intensity = 0.8;
+
+        // var light2 = new BABYLON.PointLight("Omni0", new BABYLON.Vector3(1, 1, 1), scene);
+        // light2.intensity = 1.7;
+        
+
+
+        // Create core sphere
+        var coreSphere = BABYLON.MeshBuilder.CreateSphere("coreSphere", {diameter: 2, segments: 64}, scene);
+        
+        // Create core sphere material
+        var coreMat = new BABYLON.StandardMaterial("coreMat", scene);
+        coreMat.emissiveColor = new BABYLON.Color3(0.2, 0.3, 0.5); 
+        
+        // Assign core material to sphere
+        coreSphere.material = coreMat;
+        
+        // Create a particle system
+        var coreParticles = new BABYLON.ParticleSystem("coreParticles", 2600, scene);
+
+        // Texture of each particle
+        coreParticles.particleTexture = new BABYLON.Texture("https://raw.githubusercontent.com/Babatunde-Fatai/Babylon-Assets/main//textures/2k_mars.jpg", scene);
+
+        // Pre-warm
+        coreParticles.preWarmStepOffset = 10;
+        coreParticles.preWarmCycles = 100;
+
+        //Move with 3D body - coreSphere
+        coreParticles.isLocal = true;
+
+        // Initial rotation
+        coreParticles.minInitialRotation = -2 * Math.PI;
+        coreParticles.maxInitialRotation = 2 * Math.PI;
+
+        // Size of each particle (random between...
+        coreParticles.minSize = 0.1;
+        coreParticles.maxSize = 0.4;
+
+        // Life time of each particle (random between...
+        coreParticles.minLifeTime = 2.0;
+        coreParticles.maxLifeTime = 8.0;
+
+        // Emission rate
+        coreParticles.emitRate = 2000;
+
+        // Assign particles to emitters
+        coreParticles.emitter = coreSphere; // the starting object, the emitter
+
+        
+        // // Where the star particles come from
+        // var sunEmitter = new BABYLON.SphereParticleEmitter();
+        // sunEmitter.radius = 2; 
+        // sunEmitter.radiusRange = 0; // at 0 emit only from shape surface
+        // //Particle emitter type
+        // coreParticles.particleEmitterType = sunEmitter;
+
+        // Particle Color gradient/change over time
+        coreParticles.addColorGradient(0, new BABYLON.Color4(iY, iY2, iY3, 0.0));
+        coreParticles.addColorGradient(0.2, new BABYLON.Color4(iY3, iY2, iY, 0.5));
+        coreParticles.addColorGradient(0.5, new BABYLON.Color4(iY, iY3, iY2, 0.5));
+        coreParticles.addColorGradient(1.0, new BABYLON.Color4(1, 1, 1, 0.5));
+
+        
+
+        // Blend mode : BLENDMODE_ONEONE, BLENDMODE_STANDARD, or BLENDMODE_ADD
+        coreParticles.blendMode = BABYLON.ParticleSystem.BLENDMODE_ADD;
+
+        // Set the gravity of all particles
+        coreParticles.gravity = new BABYLON.Vector3(0, 0, 0);
+
+        // Angular speed, in radians
+        coreParticles.minAngularSpeed = -0.4;
+        coreParticles.maxAngularSpeed = 0.4;
+
+        // Speed
+        coreParticles.minEmitPower = 0;
+        coreParticles.maxEmitPower = 0;
+        coreParticles.updateSpeed = 0.005;
+
+        // No billboard
+        coreParticles.isBillboardBased = false;
+
+         // Predictable pseudorandom number generator.
+        //Inputs
+        var myrng = new Math.seedrandom('you Kadia');
+        var myrng2 = new Math.seedrandom('are ll90 1995');
+        var myrng3 = new Math.seedrandom('crazy');
+
+        //Outputs
+        var iY = myrng.quick();
+        var iY2 = myrng2.quick();
+        var iY3 = myrng3.quick();
+        
+        
+      //   const ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 25, height: 25});
+      //  // ground.material = new BABYLON.GridMaterial("groundMat");
+      //   ground.material.backFaceCulling = false;
+
+      
+      var bg = new Background(scene);
+       
+       
+        
+        // Enable VR
+        var vrHelper = scene.createDefaultVRExperience({createDeviceOrientationCamera:false, useXR: true});
+        vrHelper.enableTeleportation({floorMeshes: [environment.ground]});
+
+
+
+    </script>
+
+
+   </body>
+
+</html>

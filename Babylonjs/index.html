@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Workshop!</title>
+    <meta name="description" content="Workshop!">
+    <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
+    <script src="https://unpkg.com/aframe-event-set-component@5.0.0/dist/aframe-event-set-component.min.js"></script>
+    <script src="https://unpkg.com/aframe-particle-system-component@1.0.x/dist/aframe-particle-system-component.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/howler@2.2.1/dist/howler.min.js"></script>
+    <script src="https://rawgit.com/mayognaise/aframe-mouse-cursor-component/master/dist/aframe-mouse-cursor-component.min.js"></script>
+    <script src="//cdn.jsdelivr.net/gh/donmccurdy/aframe-physics-system@v3.2.0/dist/aframe-physics-system.min.js"></script>
+    <script src="action.js"></script>
+    <script src="main.js"></script>
+  </head>
+  <body>
+    <a-scene inspector="url: http://localhost:3333/dist/aframe-inspector.js" cursor-listener>
+     
+      <a-entity id="rig" position="0 40 0" rotation="-90 0 0" movement-controls static-body>
+            <a-entity camera look-controls tilt-controls mouse-cursor cursor-listener>
+              <a-entity position="0 0 -3"
+              geometry="primitive: ring; radiusOuter: 0.05;
+                        radiusInner: 0.001;"
+              material="color: cyan; shader: flat"
+              cursor="maxDistance: 30; fuse: true">
+      <a-animation begin="click" easing="ease-in" attribute="scale"
+           fill="backwards" from="0.1 0.1 0.1" to="1 1 1" dur="150"></a-animation>
+      <a-animation begin="fusing" easing="ease-in" attribute="scale"
+           fill="forwards" from="1 1 1" to="0.1 0.1 0.1" dur="1500"></a-animation>
+      </a-entity>
+    </a-entity>
+ </a-entity>
+  </a-entity>     
+</a-entity>
+<a-entity text="font: https://cdn.aframe.io/fonts/CourierNew-sdf.fnt; value: Via URL."></a-entity>
+      <a-light type=spot distance=16 angle=30 intensity=8.47 color=#45619A position="0 10.2 -1.29"  rotation="-90 0 0" ></a-light>
+      <a-light type=directional intensity=1.25 color=#FFF4D6 position="0 3.43 3.789"  rotation="-45 130 90" ></a-light>
+      <a-sky  color = "black" geometry="" scale="4 4 4"></a-sky>
+     
+      <a-entity id = "Sun" rotation="0 0 0" animation="property: rotation; to: 0 0 0; loop: true; dur: 10000; ease: linear"> 
+        
+        <a-sphere  id = "Sun001" static-body src="" geometry="primitive: sphere; radius: 1" position="0 0 0" material="shader: standard; repeat: 1; color: #FCFF00; metalness: 0; roughness: 0.5; transparent: true; opacity: 1; side: double;"  
+        event-set__enter="_event: mouseenter; _target: #SUTag; animation: true"
+        event-set__leave="_event: mouseleave; _target: #SUText; scale: 3 3 3">
+          
+          <a-entity id = "SUTag" animation="property: scale; to: 3 3 3; easing: linear">
+            <a-text  value="Sun" negate="true" scale="0 0 0" position ="-3.3 0 0" rotation="-90 0 0"></a-text>
+            <a-text id = "SUText" visible ="false" value = "Radius: 5km, 
+            Size: 5km, 
+            weight: 5km" negate="true" scale="0 0 0" position ="0.5 0 4" rotation="-90 0 0"></a-text>
+          </a-entity>
+      
+      </a-sphere>
+    </a-entity>
+
+      
+      
+     
+      <a-entity id = "Earth" rotation="0 0 0" animation="property: rotation; to: 0 360 0; loop: true; dur: 36500; easing: linear">
+
+        <a-sphere id = "EarthMainObj" position="0 0 6" geometry="primitive: sphere; radius: 0.5" color="skyblue" 
+          event-set__enter="_event: mouseenter; _target: #earthText; visible: true"
+          event-set__leave="_event: mouseleave; _target: #earthText; visible: false"
+          change-code-hover = ""> 
+
+          <a-entity>
+            <a-text id = "V1" value="Earth" negate="true" scale="3 3 3" position ="-2.2 0 4" rotation="-90 0 0"></a-text>
+            <a-text id = "earthText" visible ="false" value = "Radius: 5km, 
+            Size: 5km, 
+            weight: 5km" negate="true" scale="3 3 3" position ="0.5 0 4" rotation="-90 0 0"></a-text>
+          </a-entity>
+
+          <a-entity id = "Moon" animation="property: rotation; to: 0 360 0; loop: true; dur: 2730.2; easing: linear">
+            <a-sphere id = "MoonMainObj" position="0 0 1" geometry="primitive: sphere; radius: 0.1362" color="skyblue" 
+            event-set__enter="_event: mouseenter; _target: #earthText; visible: true"
+            event-set__leave="_event: mouseleave; _target: #earthText; visible: false"
+            change-code-hover = "" rotation="0 0 0"> 
+            </a-sphere></a-entity>
+
+      </a-sphere>
+        
+       </a-entity>
+
+      <a-entity id = "Mercury" rotation="0 190 0" animation="property: rotation; to: 0 360 0; loop: true; dur: 8796; easing: linear">
+
+        <a-sphere id = "MercuryMainObj" position="0 0 1.925" geometry="primitive: sphere; radius: 0.1915" color="red" 
+          event-set__enter="_event: mouseenter; _target: #METag; animation: true"
+          event-set__leave="_event: mouseleave; _target: #mercuryText; visible: false" 
+          
+          change-code-hover = ""> 
+
+             
+          <a-entity id = "METag" animation="property: scale; to: 3 3 3; easing: linear">
+            <a-text  value="Mercury" negate="true" scale="0 0 0" position ="-3.3 0 0" rotation="-90 0 0"></a-text>
+            <a-text id = "mercuryText" visible ="false" value = "Radius: 5km, 
+            Size: 5km, 
+            weight: 5km" negate="true" scale="3 3 3" position ="0.5 0 4" rotation="-90 0 0"></a-text>
+          </a-entity>
+
+          
+         
+        </a-sphere>
+        
+      </a-entity>
+
+      <a-entity id = "Venus" rotation="0 140 0" animation="property: rotation; to: 0 360 0; loop: true; dur: 22447.5; easing: linear">
+
+        <a-sphere id = "VenusMainObj" position="0 0 3.615" geometry="primitive: sphere; radius: 0.474" color="pink" 
+          event-set__enter="_event: mouseenter; _target: #earthText; visible: true"
+          event-set__leave="_event: mouseleave; _target: #earthText; visible: false"
+          change-code-hover = ""> 
+
+         
+        </a-sphere>
+        
+      </a-entity>
+
+      <a-entity id = "Mars" rotation="0 0 0" animation="property: rotation; to: 0 360 0; loop: true; dur: 40020; easing: linear">
+
+        <a-sphere id = "MarsMainObj" position="0 0 7.6" geometry="primitive: sphere; radius: 0.266" color="pink" 
+          event-set__enter="_event: mouseenter; _target: #earthText; visible: true"
+          event-set__leave="_event: mouseleave; _target: #earthText; visible: false"
+          change-code-hover = ""> 
+
+         
+        </a-sphere>
+        
+      </a-entity>
+
+      <a-entity id = "Jupiter" rotation="0 270 0" animation="property: rotation; to: 0 360 0; loop: true; dur: 43350; easing: linear">
+
+        <a-sphere id = "JupiterMainObj" rotation="0 0 60" position="0 0  16.6" geometry="primitive: sphere; radius: 1.868" color="pink" 
+          event-set__enter="_event: mouseenter; _target: #earthText; visible: true"
+          event-set__leave="_event: mouseleave; _target: #earthText; visible: false"
+          change-code-hover = ""> 
+
+         
+        </a-sphere>
+        
+      </a-entity>
+
+      <a-entity id = "Saturn" rotation="0 310 0" animation="property: rotation; to: 0 360 0; loop: true; dur: 53100; easing: linear">
+
+        <a-sphere id = "SaturnMainObj" position="0 0 22" geometry="primitive: sphere; radius: 1.575" color="Blue" 
+          event-set__enter="_event: mouseenter; _target: #earthText; visible: true"
+          event-set__leave="_event: mouseleave; _target: #earthText; visible: false"
+          change-code-hover = ""> 
+
+         
+        </a-sphere>
+        
+      </a-entity>
+
+      <a-entity id = "Uranus" rotation="0 60 0" animation="property: rotation; to: 0 360 0; loop: true; dur: 59100; easing: linear">
+
+        <a-sphere id = "UranusMainObj" position="0 0 26" geometry="primitive: sphere; radius: 1.005" color="yellowgreen" 
+          event-set__enter="_event: mouseenter; _target: #earthText; visible: true"
+          event-set__leave="_event: mouseleave; _target: #earthText; visible: false"
+          change-code-hover = ""> 
+
+         
+        </a-sphere>
+        
+      </a-entity>
+
+      <a-entity id = "Neptune" rotation="0 420 0" animation="property: rotation; to: 0 360 0; loop: true; dur: 60100; easing: linear">
+
+        <a-sphere id = "NeptuneMainObj" position="0 0 30" geometry="primitive: sphere; radius: 1.00" color="pink" 
+          event-set__enter="_event: mouseenter; _target: #earthText; visible: true"
+          event-set__leave="_event: mouseleave; _target: #earthText; visible: false"
+          change-code-hover = ""> 
+
+         
+        </a-sphere>
+        
+      </a-entity>
+
+      <a-entity id = "Pluto" rotation="0 10 0" animation="property: rotation; to: 0 360 0; loop: true; dur: 61100; easing: linear">
+
+        <a-sphere id = "PlutoMainObj" position="0 0 33" geometry="primitive: sphere; radius: 0.2" color="pink" 
+          event-set__enter="_event: mouseenter; _target: #earthText; visible: true"
+          event-set__leave="_event: mouseleave; _target: #earthText; visible: false"
+          change-code-hover = ""> 
+
+         
+        </a-sphere>
+        
+      </a-entity>
+        <!-- event-set__enter="_event: mouseenter; _target: #earthText; visible: true"
+        event-set__leave="_event: mouseleave; _target: #earthText; visible: false" event-set__up="_event: mouseup; _target: #V1; visible: true" event-set__down="_event: mousedown; _target: #V1; visible: false" -->
+       
+     
+      <a-text value="Welcome to the Goldilocks Zone" negate="true" scale="10 10 7" position="-10 2 -4" rotation="-90 0 0"></a-text>
+      </a-scene>
+  </body>
+</html>

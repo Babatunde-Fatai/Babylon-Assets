@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+        <title>Babylon Template</title>
+        
+        <script src="https://cdn.babylonjs.com/babylon.js"></script>
+        <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+        <script src="https://cdn.babylonjs.com/viewer/babylon.viewer.js"></script>
+        <script src="https://code.jquery.com/pep/0.4.3/pep.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js">
+        </script>
+        <style>
+            html,body,canvas { margin: 0; padding: 0; width: 100%; height: 100%; font-size: 0; }
+        </style>
+    </head>
+
+   <body>
+    
+    <canvas id="renderCanvas" touch-action="none"></canvas> <!-- touch-action="none" for best results from PEP -->
+
+    
+    <script>
+
+
+
+const G = 1; //Global system
+        // declaring the base system
+        // mass in earth masses ratio, radii in earth radii, semi major axis in AU * 214.84, eccentricity normal
+        var planets = [
+            {mass: 0.0553, radius: 0.383, semi_major: 0.387*214.84, eccentricity: 0.206, inclination: 17, name:"Mercury", jrad: null}, 
+            {mass: 0.815, radius: 0.949, semi_major: 0.723*214.84, eccentricity: 0.007, inclination: 60, name:"Venus", jrad: null}, 
+            {mass: 1, radius: 1, semi_major: 1*214.84, eccentricity: 0.017, inclination: 45, name:"Earth", jrad: null},
+            {mass: 317.8, radius:11, semi_major: 5*214.84, eccentricity: 0.3, inclination: 120, name:"Jupiter", jrad: 1}
+        ]
+        // radius in solar radii, mass in earth masses
+        var Sun = {radius: 1, mass: 330300, rotationalvel: 0, name: "Sun", spectraltype:"M", luminosity: 1, radvel: 0}
+
+//planet object
+class Planet {
+    constructor(radius, mass, star, semi_major_axis, eccentricity, inclination, scene, name) {
+        this.bodytype = "planet";
+        this.solarMass = star.mass;
+        this.a = semi_major_axis;
+        //if eccentricity is true
+        if (eccentricity) {
+        this.e = eccentricity;
+        }
+        else {
+            this.e = 0;
+        }
+
+        this.radius = radius;
+        this.mass = mass;
+        this.distance = this.a*(1-this.e);
+        // calculating the velocity using the vis-viva equation at periapsis
+        this.velocity = Math.sqrt((G*this.solarMass)*((2/this.distance)-(1/this.a)));
+        this.x = 0;
+        this.y = this.distance;
+        //if inclination is true
+        if (inclination) {
+        this.incl = (inclination*Math.PI)/180;
+        }
+        else {
+            this.incl = 0;
+        }
+        this.z = 0;
+        this.plname = name;
+        this.pos = new BABYLON.Vector3(this.x, this.y, this.z);
+        this.momentum = new BABYLON.Vector3(this.velocity*this.mass*Math.cos(this.incl), 0, this.velocity*this.mass*Math.sin(this.incl))
+        this.dx = new BABYLON.Vector3(0, 0, 0);
+        this.gforce = new BABYLON.Vector3(0, 0, 0);
+        this.body = BABYLON.MeshBuilder.CreateSphere(this.plname, {diameter:this.radius*2}, scene);
+        this.body.bakeCurrentTransformIntoVertices();
+        this.body.position = this.pos;
+        this.body.computeWorldMatrix(true);
+        this.b = Math.sqrt((this.a**2)*(1-(this.e**2)))
+        this.h = ((this.a - this.b)**2)/((this.a + this.b)**2)
+        this.orbper = Math.PI * (this.a + this.b) * (1 + ((3*this.h)/(10 + Math.sqrt(4 - (3*this.h)))))
+        this.orb = new BABYLON.TrailMesh(this.plname+" orb", this.body, scene, this.radius, this.orbper*4, true);
+        this.texture = new BABYLON.StandardMaterial("plmat", scene)
+        this.texture.diffuseColor = new BABYLON.Color3(0.3, 0.8, 0.3);
+        this.texture.specularColor = new BABYLON.Color3(0,0,0);
+        this.body.material = this.texture;
+        this.sourceMat = new BABYLON.StandardMaterial('sourceMat', scene);
+        this.sourceMat.emissiveColor = 
+            this.sourceMat.diffuseColor = new BABYLON.Color3.Red();
+        this.sourceMat.specularColor = new BABYLON.Color3.Black();
+        this.orb.material = this.sourceMat;
+        this.density = this.mass / ((4/3)*Math.PI*(this.radius**3));
+        //>>??????????
+        if(this.a < star.outerh && this.a > star.innerh) {
+            this.habitable = false;
+        }
+        else {
+            this.habitable = true;
+        }
+        this.calc_type();
+    }
+    calc_gravity(p1) {
+        // p1 and p2 are 2 celestial bodies 
+        //Calculating Gravity, Formula = (G(m1*m2)/r^2) * r_hat
+        /* here r_hat is for direction, G is gravitational constant, 
+            r is distance and m1 and m2 are the masses of the objects */
+        this.m1 = this.mass;
+        this.m2 = p1.mass;
+        // r is the distance between the 2 bodies
+        // r_hat is calculated using the vector of r divided by the magnitude of r
+        this.r = new BABYLON.Vector3(this.body.position.x - p1.body.position.x, this.body.position.y - p1.body.position.y, this.body.position.z - p1.body.position.z);
+        this.rmag = Math.sqrt(this.r.x**2+this.r.y**2+this.r.z**2);
+        this.r_hat = new BABYLON.Vector3(this.r.x/this.rmag, this.r.y/this.rmag, this.r.z/this.rmag);
+        this.gravity = (G*this.m1*this.m2)/(this.rmag**2);
+        this.Fgravity = new BABYLON.Vector3(this.r_hat.x * -this.gravity, this.r_hat.y * -this.gravity, this.r_hat.z * -this.gravity);
+        this.gforce = new BABYLON.Vector3(this.gforce.x + this.Fgravity.x, this.gforce.y + this.Fgravity.y, this.gforce.z + this.Fgravity.z);
+    }
+    calc_dx(dt) {
+        this.momentum = new BABYLON.Vector3(this.momentum.x + this.gforce.x * dt, this.momentum.y + this.gforce.y * dt, this.momentum.z + this.gforce.z * dt)
+        this.dx = new BABYLON.Vector3(this.momentum.x/this.mass * dt, this.momentum.y/this.mass * dt, (this.momentum.z/this.mass) * dt)
+        this.gforce = new BABYLON.Vector3(0,0,0);
+    }
+    move(dt) {
+        this.calc_dx(dt);
+        this.body.position.x += this.dx.x;
+        this.body.position.y += this.dx.y;
+        this.body.position.z += this.dx.z;
+    }
+
+    //what type of planet is this:
+    calc_type() {
+        if (0.9 >= this.mass && this.mass <= 1.2 && 0.9 >= this.radius && this.radius <= 1.2){
+            this.pltype = "Earth-like";
+        }
+        else if (0 < this.mass && this.mass <= 3.5){
+            this.pltype = "Rocky";
+        }
+        else if (3.5 < this.mass && this.mass <= 10){
+            if (this.density >= 2) {
+                this.pltype = "Super-Earth";
+            } else {
+                this.pltype = "Mini-Neptune";
+            }
+        }
+        else if (10 < this.mass && this.mass <= 80){
+            this.pltype = "Neptune-like";
+        }
+        else if (80 < this.mass && this.mass <= 200) {
+            this.pltype = "Saturn-like";
+        }
+        else if (200 < this.mass) {
+            this.pltype = "Jupiter-like";
+        }
+        console.log(this.pltype) //Get planet type from here as output
+    }
+}
+
+//star object
+class Star { // spectraltype is contained in the spectype switch case MKGF...ect.
+    constructor(radius, mass, rotationalvel, spectraltype, radvel, scene, name) {
+        this.bodytype = "star";
+        this.radius = radius;
+        console.log(radius)
+        this.mass = mass;
+        this.rv = rotationalvel
+        this.x = 0;
+        this.y = 0;
+        this.z = 0;
+        this.radvel = radvel;
+        if (spectraltype) {
+            this.spectype = spectraltype[0]
+        }
+        else {
+            this.spectype = "G"
+        }
+        this.plname = name;
+        this.pos = new BABYLON.Vector3(this.x, this.y, this.z);
+        this.momentum = new BABYLON.Vector3(0, 0, 0)
+        this.dx = new BABYLON.Vector3(0, 0, 0);
+        this.gforce = new BABYLON.Vector3(0, 0, 0);
+        this.body = BABYLON.MeshBuilder.CreateSphere(this.plname, {diameter:this.radius*2}, scene);
+        this.body.position = this.pos;
+        this.sunTexture = new BABYLON.StandardMaterial("sun", scene);
+        this.sunTexture.emissiveColor = new BABYLON.Color3(1, 1, 0);
+        this.body.material = this.sunTexture;
+        this.apply_texture(scene)
+    }
+    calc_gravity(p1) {
+        // p1 and p2 are 2 celestial bodies 
+        //Calculating Gravity, Formula = (G(m1*m2)/r^2) * r_hat
+        /* here r_hat is for direction, G is gravitational constant, 
+            r is distance and m1 and m2 are the masses of the objects */
+        this.m1 = p1.mass;
+        this.m2 = this.mass;
+        // r is the distance between the 2 bodies
+        // r_hat is calculated using the vector of r divided by the magnitude of r
+        this.r = new BABYLON.Vector3(p1.body.position.x - this.body.position.x, p1.body.position.y - this.body.position.y, p1.body.position.z - this.body.position.z);
+        this.rmag = Math.sqrt(Math.pow(this.r.x, 2)+Math.pow(this.r.y, 2)+Math.pow(this.r.z, 2));
+        this.r_hat = new BABYLON.Vector3(this.r.x/this.rmag, this.r.y/this.rmag, this.r.z/this.rmag);
+        this.gravity = (G*this.m1*this.m2)/(this.rmag**2);
+        this.Fgravity = new BABYLON.Vector3(this.r_hat.x * -this.gravity, this.r_hat.y * -this.gravity, this.r_hat.z * -this.gravity);
+        this.gforce = new BABYLON.Vector3(this.gforce.x + this.Fgravity.x, this.gforce.y + this.Fgravity.y, this.gforce.z + this.Fgravity.z);
+    }
+    calc_dx(dt) {
+        //calculating the momentum (mv) through the force as f = ma, a = dv/t, f*t = mv 
+        this.momentum = new BABYLON.Vector3(this.momentum.x + this.gforce.x * dt, this.momentum.y + this.gforce.y * dt, this.momentum.z + this.gforce.z * dt)
+        //calculating the change in distance 
+        this.dx = new BABYLON.Vector3(this.momentum.x/this.mass * dt, this.momentum.y/this.mass * dt, this.momentum.z/this.mass * dt)
+        // reseting gravitational force so it can be recalculated after movement has occured.
+        this.gforce = new BABYLON.Vector3(0,0,0)
+    }
+    move(dt) {
+        this.calc_dx(dt);
+        this.body.position.x += this.dx.x;
+        this.body.position.y += this.dx.y;
+        this.body.position.z += this.dx.z;
+    }
+    calc_habitable(luminosity, scene) {
+        this.luminosity = luminosity;
+        this.innerh = Math.sqrt(this.luminosity/1.1);
+        this.outerh = Math.sqrt(this.luminosity/0.53);
+        console.log(this.innerh)
+        console.log(this.outerh)
+        this.hz = [];
+        this.innerc = [];
+        this.radius = this.innerh*214.84;
+        this.deltaTheta = 0.001;
+        for(this.theta = 0; this.theta < 2 * Math.PI; this.theta += this.deltaTheta ) {
+            this.innerc.push(new BABYLON.Vector3(this.radius * Math.cos(this.theta) + this.body.position.x, this.radius * Math.sin(this.theta) + this.body.position.y, 0 + this.body.position.z)); 
+        }
+        this.hz.push(this.innerc);
+        this.outerc = [];
+        this.radius = this.outerh*214.84;
+        this.deltaTheta = 0.001;
+        for(this.theta = 0; this.theta < 2 * Math.PI; this.theta += this.deltaTheta ) {
+            this.outerc.push(new BABYLON.Vector3(this.radius * Math.cos(this.theta) + this.body.position.x, this.radius * Math.sin(this.theta) + this.body.position.y, 0 + this.body.position.z)); 
+        }
+        this.hz.push(this.outerc);
+        this.habitable_zone = BABYLON.MeshBuilder.CreateRibbon("ribbon", {pathArray: this.hz, sideOrientation: BABYLON.Mesh.DOUBLESIDE}, scene);
+        this.faintGreen = new BABYLON.StandardMaterial("faintGreen", scene);
+
+        this.faintGreen.diffuseColor = new BABYLON.Color3(0.2, 1, 0.2);
+        this.faintGreen.specularColor = new BABYLON.Color3(0, 0, 0);
+        this.faintGreen.emissiveColor = new BABYLON.Color3(0.2, 1, 0.2);
+        this.faintGreen.alpha = 0.5;
+
+        this.habitable_zone.material = this.faintGreen;
+    }
+    apply_texture(scene) {
+    this.coreMat = new BABYLON.StandardMaterial("coreMat", scene)
+        if (this.radius < 15 || this.radvel) {
+            // Create a particle system
+            this.surfaceParticles = new BABYLON.ParticleSystem("surfaceParticles", 10000, scene);
+
+            // Texture of each particle
+            this.surfaceParticles.particleTexture = new BABYLON.Texture("https://raw.githubusercontent.com/PatrickRyanMS/BabylonJStextures/master/ParticleSystems/Sun/T_SunSurface.png", scene);
+
+            // Pre-warm
+            this.surfaceParticles.preWarmStepOffset = 10;
+            this.surfaceParticles.preWarmCycles = 100;
+
+            // Initial rotation
+            this.surfaceParticles.minInitialRotation = -2 * Math.PI;
+            this.surfaceParticles.maxInitialRotation = 2 * Math.PI;
+            
+            // Where the sun particles come from
+            this.sunEmitter = new BABYLON.SphereParticleEmitter();
+            this.sunEmitter.radius = this.radius;
+            this.sunEmitter.radiusRange = 0; // emit only from shape surface
+
+            // Assign particles to emitters
+            this.surfaceParticles.emitter = this.body; // the starting object, the emitter
+            this.surfaceParticles.particleEmitterType = this.sunEmitter;
+
+            // Color gradient over time
+            this.surfaceParticles.addColorGradient(0, new BABYLON.Color4(0.8509, 0.4784, 0.1019, 0.0));
+
+            switch(true) {
+                case this.spectype === "M":
+                    this.coreMat.emissiveColor = new BABYLON.Color3(0.3, 0.1, 0.05);
+                    this.body.material = this.coreMat;
+                    this.surfaceParticles.addColorGradient(0.4, new BABYLON.Color4(0.9, 0.2, 0.1, 0.5));
+                    this.surfaceParticles.addColorGradient(0.5, new BABYLON.Color4(0.9, 0.3, 0.1, 0.5));
+                    break;
+                case this.spectype === "K":
+                    this.coreMat.emissiveColor = new BABYLON.Color3(0.3, 0.1, 0.05);
+                    this.body.material = this.coreMat;
+                    this.surfaceParticles.addColorGradient(0.4, new BABYLON.Color4(0.8, 0.3, 0.1, 0.5));
+                    this.surfaceParticles.addColorGradient(0.5, new BABYLON.Color4(0.8, 0.4, 0.1, 0.5));
+                    break;
+                case this.spectype === "G": //Earth's sun
+                    this.coreMat.emissiveColor = new BABYLON.Color3(0.3, 0.1, 0.05);
+                    this.body.material = this.coreMat;
+                    this.surfaceParticles.addColorGradient(0.4, new BABYLON.Color4(0.7, 0.4, 0.1, 0.5));
+                    this.surfaceParticles.addColorGradient(0.5, new BABYLON.Color4(0.7, 0.5, 0.1, 0.5));
+                    break;
+                case this.spectype === "F":
+                    this.coreMat.emissiveColor = new BABYLON.Color3(0.3, 0.2, 0.2);
+                    this.body.material = this.coreMat;
+                    this.surfaceParticles.addColorGradient(0.4, new BABYLON.Color4(0.6, 0.5, 0.4, 0.5));
+                    this.surfaceParticles.addColorGradient(0.5, new BABYLON.Color4(0.6, 0.6, 0.4, 0.5));
+                    break;
+                case this.spectype === "A":
+                    this.coreMat.emissiveColor = new BABYLON.Color3(0.3, 0.3, 0.3);
+                    this.body.material = this.coreMat;
+                    this.surfaceParticles.addColorGradient(0.4, new BABYLON.Color4(0.5, 0.5, 0.5, 0.5));
+                    this.surfaceParticles.addColorGradient(0.5, new BABYLON.Color4(0.6, 0.6, 0.6, 0.5));
+                    break;
+                case this.spectype === "B":
+                    this.coreMat.emissiveColor = new BABYLON.Color3(0.3, 0., 0.3);
+                    this.body.material = this.coreMat;
+                    this.surfaceParticles.addColorGradient(0.4, new BABYLON.Color4(0.3, 0.4, 0.7, 0.5));
+                    this.surfaceParticles.addColorGradient(0.5, new BABYLON.Color4(0.3, 0.5, 0.7, 0.5));
+                    break;
+                case this.spectype === "O":
+                    this.coreMat.emissiveColor = new BABYLON.Color3(0.2, 0.2, 0.5);
+                    this.body.material = this.coreMat;
+                    this.surfaceParticles.addColorGradient(0.4, new BABYLON.Color4(0.2, 0.3, 0.8, 0.5));
+                    this.surfaceParticles.addColorGradient(0.5, new BABYLON.Color4(0.2, 0.4, 0.8, 0.5));
+                    break;
+            }
+            
+            this.surfaceParticles.addColorGradient(1.0, new BABYLON.Color4(0.3207, 0.0713, 0.0075, 0.0));
+
+            // Size of each particle (random between...
+            this.surfaceParticles.minSize = 0.4*(this.radius/2);
+            this.surfaceParticles.maxSize = 0.7*(this.radius/2);
+        
+            // Life time of each particle (random between...
+            this.surfaceParticles.minLifeTime = 8.0;
+            this.surfaceParticles.maxLifeTime = 8.0;
+
+            // Emission rate
+            // emission rate should be 1000
+            this.surfaceParticles.emitRate = 1000;
+
+            // Blend mode : BLENDMODE_ONEONE, BLENDMODE_STANDARD, or BLENDMODE_ADD
+            this.surfaceParticles.blendMode = BABYLON.ParticleSystem.BLENDMODE_ADD;
+
+            // Set the gravity of all particles
+            this.surfaceParticles.gravity = new BABYLON.Vector3(0, 0, 0);
+
+            // Angular speed, in radians
+            this.surfaceParticles.minAngularSpeed = -0.4;
+            this.surfaceParticles.maxAngularSpeed = 0.4;
+
+            // Speed
+            this.surfaceParticles.minEmitPower = 0;
+            this.surfaceParticles.maxEmitPower = 0;
+            this.surfaceParticles.updateSpeed = 0.05;
+
+            // No billboard
+            this.surfaceParticles.isBillboardBased = false;
+
+            // Start the particle system
+            this.surfaceParticles.start();
+        }
+        else {
+            switch(true) {
+                case this.spectype === "M":
+                    this.coreMat.emissiveColor = new BABYLON.Color3(0.9, 0.2, 0.1);
+                    this.body.material = this.coreMat;
+                    break;
+                case this.spectype === "K":
+                    this.coreMat.emissiveColor = new BABYLON.Color3(0.8, 0.3, 0.1);
+                    this.body.material = this.coreMat;
+                    break;
+                case this.spectype === "G":
+                    this.coreMat.emissiveColor = new BABYLON.Color3(0.7, 0.4, 0.1);
+                    this.body.material = this.coreMat;
+                    break;
+                case this.spectype === "F":
+                    this.coreMat.emissiveColor = new BABYLON.Color3(0.6, 0.5, 0.3);
+                    this.body.material = this.coreMat;
+                    break;
+                case this.spectype === "A":
+                    this.coreMat.emissiveColor = new BABYLON.Color3(0.7, 0.7, 0.7);
+                    this.body.material = this.coreMat;
+                    break;
+                case this.spectype === "B":
+                    this.coreMat.emissiveColor = new BABYLON.Color3(0.3, 0.4, 0.7);
+                    this.body.material = this.coreMat;
+                    break;
+                case this.spectype === "O":
+                    this.coreMat.emissiveColor = new BABYLON.Color3(0.2, 0.3, 0.8);
+                    this.body.material = this.coreMat;
+                    break;
+            }
+        }
+    }
+}
+
+//orbit
+class Orbit {
+    constructor (semi_major, inclination, eccentricity, origin, scene, name) {
+        // the equation for ellipse is (x/a)^2 + (y/b)^2 = 1
+        this.path = [];
+        this.a = semi_major;
+        this.e = eccentricity;
+        this.incl = (inclination*Math.PI)/180
+        this.deltaTheta = 0.001;
+        for(this.theta = 0; this.theta < 2 * Math.PI; this.theta += this.deltaTheta ) {
+            this.radius = (this.a*(1-(this.e**2)))/(1+this.e*Math.cos(this.theta))
+            this.path.push(new BABYLON.Vector3(this.radius * Math.sin(this.theta) + origin.position.x, this.radius * Math.cos(this.theta) + origin.position.y, 0 + origin.position.z)); 
+        }
+        this.body = BABYLON.MeshBuilder.CreateLines(name, {points: this.path}, scene);
+        this.body.rotation.y = -this.incl;
+    }
+};
+
+
+
+var canvas = document.getElementById("renderCanvas");
+        
+        //creating engine
+var engine = new BABYLON.Engine(canvas);
+
+        //create scene
+        var scene = new BABYLON.Scene(engine);
+        scene.clearColor = new BABYLON.Color3(0.01, 0.001, 0.001);
+        scene.ambientColor = new BABYLON.Color3(0.001, 0.001, 0.001);
+       
+        var renderLoop = function () {
+            scene.render();
+            
+            //t += 0.0000001; //Ecosystem time
+            // animations code goes here
+
+            
+            
+            //Revolvng all planets around axis
+            // planets.forEach(async function(planets) {
+                
+
+                // if (planets == Earth) {
+
+                //     planets.rotate(earthAxis, 0.01, BABYLON.Space.WORLD);
+                    
+                // }else {
+                //     planets.rotation.y = t*200000;
+                // }
+
+                
+                //Handling rotation around the sun
+                // AroundTheSun(Venus, 5, -22447.5);
+                // AroundTheSun(Mercury, 10, 8796);
+                // AroundTheSun(Earth, 15, 36500);
+                // AroundTheSun(Mars, 20, 40020);
+                // AroundTheSun(Jupiter, 25, 43350);
+                // AroundTheSun(Saturn, 30, 53100);
+                // AroundTheSun(Uranus, 35, 59100);
+                // AroundTheSun(Neptune, 40, 60100);
+                // AroundTheSun(Pluto, 45, 61100);
+                
+                // behavior.attach(Moon, Earth);
+
+
+                
+            // })
+
+        };
+        engine.runRenderLoop(renderLoop);
+
+        // This creates and positions a free camera (non-mesh)
+        var camera = new BABYLON.ArcRotateCamera("camera1", 1, 1, 5, new BABYLON.Vector3(70, 0, -5), scene);
+        
+        camera.attachControl(canvas, true);
+        // This targets the camera to scene origin
+        camera.setTarget(BABYLON.Vector3.Zero());
+
+        // var freeCamera = new BABYLON.freeCamera("freeCamera", new BABYLON.Vector3(70, 0, -5), scene);
+        // scene.activeCamera = freeCamera;
+        
+
+        // //Adding lights
+        // var light = new BABYLON.PointLight("light", new BABYLON.Vector3(10, 10, 0), scene);
+        // // Default intensity is 1. Let's dim the light a small amount
+        // light.intensity = 10.7;
+
+        // lights
+        // var light = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(1, 0.5, 0), scene);
+        // light.intensity = 1.8;
+
+        var light2 = new BABYLON.PointLight("Omni0", new BABYLON.Vector3(1, 1, 1), scene);
+        light2.intensity = 1.0;
+        
+        
+        
+        //The sun
+        // var Sun = BABYLON.ParticleHelper.CreateAsync("sun", scene).then((set) => {
+        // set.start();
+        //  });
+
+        
+        // const ground = BABYLON.MeshBuilder.CreateGround("ground", {width:10, height:10});
+        
+
+        
+        // //Mercury
+        // var Mercury = BABYLON.MeshBuilder.CreateSphere("Mercury", {diameter: 2, segments: 32}, scene);
+        // CreateMaterialAtrributes(Mercury, 20,'https://raw.githubusercontent.com/Babatunde-Fatai/Babylon-Assets/main/textures/mercurymap.jpg');
+        
+        // //Venus
+        // var Venus = BABYLON.MeshBuilder.CreateSphere("Venus", {diameter: 3.6, segments: 32}, scene);
+        // CreateMaterialAtrributes(Venus, 45,'https://raw.githubusercontent.com/Babatunde-Fatai/Babylon-Assets/main/textures/2k_venus_surface.jpg');
+
+        // //Earth
+        // var Earth = BABYLON.MeshBuilder.CreateSphere("Earth", {diameter: 5, segments: 32}, scene);
+        // //tilt earth axis
+        // var earthAxis = new BABYLON.Vector3(Math.sin(23 * Math.PI/180), Math.cos(23 * Math.PI/180), 0);
+        //  //create material
+        // CreateMaterialAtrributes(Earth, 70,'https://raw.githubusercontent.com/Babatunde-Fatai/Babylon-Assets/main/textures/2k_earth_daymap.jpg');
+        
+       
+        // //create moon
+        // var Moon = BABYLON.MeshBuilder.CreateSphere("moon", {diameter: 2, segments: 32}, scene);
+        // CreateMaterialAtrributes(Moon, 'textures/moonmap4k');
+        // Moon.position.x = 10;
+
+        // //Mars
+        // var Mars = BABYLON.MeshBuilder.CreateSphere("Mars", {diameter: 2.66, segments: 32}, scene);
+        // CreateMaterialAtrributes(Mars, 85,'https://raw.githubusercontent.com/Babatunde-Fatai/Babylon-Assets/main//textures/2k_mars.jpg');
+        
+        // //Jupiter
+        // var Jupiter = BABYLON.MeshBuilder.CreateSphere("Jupiter", {diameter: 16.6, segments: 32}, scene);
+        // CreateMaterialAtrributes(Jupiter, 160,'https://raw.githubusercontent.com/Babatunde-Fatai/Babylon-Assets/main/textures/2k_jupiter.jpg');
+
+        // //Saturn
+        // var Saturn = BABYLON.MeshBuilder.CreateSphere("Saturn", {diameter: 5, segments: 32}, scene);
+        // CreateMaterialAtrributes(Saturn, 220,'https://raw.githubusercontent.com/Babatunde-Fatai/Babylon-Assets/main/textures/2k_saturn.jpg');
+
+        // //Uranus
+        // var Uranus = BABYLON.MeshBuilder.CreateSphere("Uranus", {diameter: 10.6, segments: 32}, scene);
+        // CreateMaterialAtrributes(Uranus, 260,'https://raw.githubusercontent.com/Babatunde-Fatai/Babylon-Assets/main/textures/2k_uranus.jpg');
+
+        // //Neptune
+        // var Neptune = BABYLON.MeshBuilder.CreateSphere("Neptune", {diameter: 10, segments: 32}, scene);
+        // CreateMaterialAtrributes(Neptune, 300,'https://raw.githubusercontent.com/Babatunde-Fatai/Babylon-Assets/main//textures/neptunemap.jpg');
+
+        // //Saturn
+        // var Pluto = BABYLON.MeshBuilder.CreateSphere("Pluto", {diameter: 2, segments: 32}, scene);
+        // CreateMaterialAtrributes(Pluto, 100,'https://raw.githubusercontent.com/Babatunde-Fatai/Babylon-Assets/main//textures/plutomap2k.jpg');
+        // //Behaviour
+  
+
+        
+
+
+        // //Array of planets in scene
+        // let planets = [Mercury, Earth, Venus, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto];
+
+        
+        
+        // create axes for frame of reference of Center of Transformation
+        //var CoTAxis = localAxes(2, 0);
+
+        //create a Center of Transformation
+        // var CoT = new BABYLON.TransformNode("root"); //Transformation object/unrendered
+        // CoT.position = new BABYLON.Vector3(5, 0, 15);
+        // Earth.position = CoT.position; 
+        // Moon.parent = CoT;  //apply to Moon
+        // Moon.position.z = 7;
+
+
+        //Objs rotating around the middle of the Sun 
+        // function AroundTheSun (body, dist, time) {
+
+        //     var CoTPrime = new BABYLON.TransformNode("root"); //Transformation object-unrendered
+        //     CoTPrime.position = new BABYLON.Vector3(0, 0, 0);
+        //     Sun.position = CoTPrime.position; 
+        //     body.parent = CoTPrime;  //apply to Box
+        //     body.position.z = dist + 10;
+        //     //body.position.z = dist;
+        //     CoTPrime.rotation.y = t * time;
+        // };
+
+        // //General material and initial position attributes
+        // function CreateMaterialAtrributes (planet, x_pos ,url) {
+
+        // //create Material
+        // var matName = new BABYLON.StandardMaterial("Planet", scene);
+
+        // //set appearance properties
+        // matName.diffuseTexture = new BABYLON.Texture("" + url, scene);
+        // matName.diffuseColor = new BABYLON.Color3(1, 1, 1);
+        // matName.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+        // //EarthMat.emissiveColor = new BABYLON.Color3(1, 1, 1);
+        // matName.ambientColor = new BABYLON.Color3(0.23, 0.98, 0.53);
+        // //EarthMat.bumpTexture = new BABYLON.Texture("/textures/2k_earth_normal_map", scene);
+        // planet.material = matName;
+        // planet.position = new BABYLON.Vector3(x_pos, 0, 0);
+        // planet.rotation = new BABYLON.Vector3(90, 0, 0);
+
+        // planet.renderingGroupId = 1;
+
+        // };
+        
+       
+        
+class Background {
+    constructor(scene) {
+        this.skybox = BABYLON.Mesh.CreateBox("skyBox", 10000.0, scene);
+        this.skyboxMaterial = new BABYLON.BackgroundMaterial("skyBox", scene);
+        this.skyboxMaterial.backFaceCulling = false;
+        this.skyboxMaterial.disableLighting = true;
+        var files = [
+                "https://raw.githubusercontent.com/BabylonJS/Babylon.js/blob/master/Playground/textures/Space/space_left.jpg",
+                "https://raw.githubusercontent.com/BabylonJS/Babylon.js/blob/master/Playground/textures/Space/space_up.jpg",
+                "https://raw.githubusercontent.com/BabylonJS/Babylon.js/blob/master/Playground/textures/Space/space_front.jpg",
+                "https://raw.githubusercontent.com/BabylonJS/Babylon.js/blob/master/Playground/textures/Space/space_right.jpg",
+                "https://raw.githubusercontent.com/BabylonJS/Babylon.js/blob/master/Playground/textures/Space/space_down.jpg",
+                "https://raw.githubusercontent.com/BabylonJS/Babylon.js/blob/master/Playground/textures/Space/space_back.jpg",
+            ];
+	    this.skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture.CreateFromImages(files, scene);
+        this.skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
+        this.skybox.material = this.skyboxMaterial;
+        this.skybox.infiniteDistance = true;
+
+    }
+}
+
+        
+
+
+
+         //Draw line
+
+         //Lines - options
+        // const myLines = [
+        //     //new BABYLON.Vector3(-2, -1, 0),
+        // // new BABYLON.Vector3(0, 1, 0),
+        //     new BABYLON.Vector3(2, -1, 0),
+        //     new BABYLON.Vector3(50, 2, 50),
+        //     new BABYLON.Vector3(0, 20, -10),
+        // ]
+
+        // myLines.push(myLines[0]);
+
+        // const options = {
+        //     points: myLines,
+        //     updatable: true
+        // }
+        
+        // let lines = BABYLON.MeshBuilder.CreateLines("lines", options);
+
+        // //endpoints - options
+        // options.points[5] = new BABYLON.Vector3(-2, 1, -1);
+        // options.points[4] = new BABYLON.Vector3(0, -1, 0);
+        // options.points[2] = new BABYLON.Vector3(2, 0, 0);
+        // options.points[1] = new BABYLON.Vector3(-1, -2, 0);
+        // options.points[0] = new BABYLON.Vector3(5, -2, 05);
+
+        // options.instance = lines;
+
+        // lines = BABYLON.MeshBuilder.CreateLines("lines", options);
+        // lines.position = Sun.position + 2;
+        
+        // Enable VR
+        var vrHelper = scene.createDefaultVRExperience({createDeviceOrientationCamera:false, useXR: true});
+        vrHelper.enableTeleportation({floorMeshes: [environment.ground]});
+
+
+
+    </script>
+
+
+   </body>
+
+</html>

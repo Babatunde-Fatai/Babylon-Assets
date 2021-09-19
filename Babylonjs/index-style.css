@@ -1,0 +1,30 @@
+@font-face{
+  font-family:"CharterITCW05-Regular";
+  src:url("Fonts/CharterITCW05-Regular.eot?#iefix");
+  src:url("Fonts/CharterITCW05-Regular.eot?#iefix") format("eot"),url("Fonts/CharterITCW05-Regular.woff2") format("woff2"),url("Fonts/CharterITCW05-Regular.woff") format("woff"),url("Fonts/CharterITCW05-Regular.ttf") format("truetype");
+}
+
+@font-face{
+  font-family:"PwC Helvetica Neue";
+  src:url("Fonts/HelveticaNeueLTW15-45Light.eot?#iefix");
+  src:url("Fonts/HelveticaNeueLTW15-45Light.eot?#iefix") format("eot"),url("Fonts/HelveticaNeueLTW15-45Light.woff2") format("woff2"),url("Fonts/HelveticaNeueLTW15-45Light.woff") format("woff"),url("Fonts/HelveticaNeueLTW15-45Light.ttf") format("truetype");
+}
+
+*{
+margin: 0;
+box-sizing: border-box;
+font-family: Arial, Helvetica, sans-serif;
+}
+
+body{
+width: 100vw;
+height: 100vh;
+background-color: #f3f3f3;
+}
+
+.page{
+width: 100%;
+height: 100%;
+/*padding: 10px;*/
+overflow: hidden;
+}
