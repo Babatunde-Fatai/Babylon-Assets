@@ -493,9 +493,30 @@ var sun = new Star(Sun.radius, Sun.mass, Sun.rotationalvel, "M", Sun.radvel, sce
         var pl = new Orbit(planets[planet].semi_major, planets[planet].inclination, planets[planet].eccentricity, star.body, scene, planets[planet].name+"_orb")
         pl_orbits.push(pl)
     }
-    star.calc_habitable(Sun.luminosity, scene);
+    sun.calc_habitable(Sun.luminosity, scene);
     var dt = 0.01;
     var t = 0;
+
+      //updating the positions before rendering the scene
+      scene.registerBeforeRender(function() {
+        for(planet=0; planet<pl_bodies.length; planet++) {
+            current = pl_bodies[planet];
+            current.calc_gravity(star);
+            star.calc_gravity(current);
+            for(p=0; p<pl_bodies.length; p++) {
+                if(current != pl_bodies[p]){
+                    current.calc_gravity(pl_bodies[p])
+                }
+            }
+        }
+        for(planet=0; planet<pl_bodies.length; planet++) {
+            pl_bodies[planet].move(dt)
+        }
+        star.move(dt)
+        light.position = star.body.position;
+        camera.setTarget(star.body.position)
+        t += dt;
+    });
 
 // Enable VR
 var vrHelper = scene.createDefaultVRExperience({createDeviceOrientationCamera:false, useXR: true});
