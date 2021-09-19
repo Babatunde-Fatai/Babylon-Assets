@@ -603,12 +603,12 @@ class Background {
         this.skyboxMaterial.backFaceCulling = false;
         this.skyboxMaterial.disableLighting = true;
         var files = [
-                "https://raw.githubusercontent.com/BabylonJS/Babylon.js/blob/master/Playground/textures/Space/space_left.jpg",
-                "https://raw.githubusercontent.com/BabylonJS/Babylon.js/blob/master/Playground/textures/Space/space_up.jpg",
-                "https://raw.githubusercontent.com/BabylonJS/Babylon.js/blob/master/Playground/textures/Space/space_front.jpg",
-                "https://raw.githubusercontent.com/BabylonJS/Babylon.js/blob/master/Playground/textures/Space/space_right.jpg",
-                "https://raw.githubusercontent.com/BabylonJS/Babylon.js/blob/master/Playground/textures/Space/space_down.jpg",
-                "https://raw.githubusercontent.com/BabylonJS/Babylon.js/blob/master/Playground/textures/Space/space_back.jpg",
+        "https://raw.githubusercontent.com/Babatunde-Fatai/Babylon-Assets/main/textures/skybox/skybox_nx.jpg",
+        "https://raw.githubusercontent.com/Babatunde-Fatai/Babylon-Assets/main/textures/skybox/skybox_ny.jpg",
+        "https://raw.githubusercontent.com/Babatunde-Fatai/Babylon-Assets/main/textures/skybox/skybox_nz.jpg",
+        "https://raw.githubusercontent.com/Babatunde-Fatai/Babylon-Assets/main/textures/skybox/skybox_px.jpg",
+        "https://raw.githubusercontent.com/Babatunde-Fatai/Babylon-Assets/main/textures/skybox/skybox_py.jpg",
+        "https://raw.githubusercontent.com/Babatunde-Fatai/Babylon-Assets/main/textures/skybox/skboxy_pz.jpg",
             ];
 	    this.skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture.CreateFromImages(files, scene);
         this.skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
