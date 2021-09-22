@@ -125,7 +125,6 @@ class Planet {
         this.body.position.y += this.dx.y;
         this.body.position.z += this.dx.z;
     }
-
     //what type of planet is this:
     calc_type() {
         if (0.9 >= this.mass && this.mass <= 1.2 && 0.9 >= this.radius && this.radius <= 1.2){
@@ -243,7 +242,7 @@ class Star { // spectraltype is contained in the spectype switch case MKGF...ect
         this.faintGreen.emissiveColor = new BABYLON.Color3(0.2, 1, 0.2);
         this.faintGreen.alpha = 0.5;
 
-        this.habitable_zone.material = this.faintGreen;
+        this.habitable_zone.material = this.faintGreen; //godilock zone
     }
     apply_texture(scene) {
     this.coreMat = new BABYLON.StandardMaterial("coreMat", scene)
@@ -400,7 +399,7 @@ class Orbit {
         this.deltaTheta = 0.001;
         for(this.theta = 0; this.theta < 2 * Math.PI; this.theta += this.deltaTheta ) {
             this.radius = (this.a*(1-(this.e**2)))/(1+this.e*Math.cos(this.theta))
-            this.path.push(new BABYLON.Vector3(this.radius * Math.sin(this.theta) + origin.position.x, this.radius * Math.cos(this.theta) + origin.position.y, 0 + origin.position.z)); 
+            this.path.push(new BABYLON.Vector3(this.radius * Math.sin(this.theta) + origin.pos.x, this.radius * Math.cos(this.theta) + origin.pos.y, 0 + origin.pos.z)); 
         }
         this.body = BABYLON.MeshBuilder.CreateLines(name, {points: this.path}, scene);
         this.body.rotation.y = -this.incl;
@@ -443,15 +442,7 @@ scene.ambientColor = new BABYLON.Color3(0.001, 0.001, 0.001);
 
 var renderLoop = function () {
 scene.render();    
-
     
-    //     for(planet=0; planet<pl_bodies.length; planet++) {
-    //         pl_bodies[planet].move(dt)
-    //     }
-    //     star.move(dt)
-    //     light.position = star.body.position;
-    //     // camera.setTarget(star.body.position)
-    //     t += dt;
 
 };
 engine.runRenderLoop(renderLoop);
@@ -466,61 +457,61 @@ camera.attachControl(canvas, true);
 camera.setPosition(new BABYLON.Vector3(0, 0, 20));
 var bg = new Background(scene);
 
-
 var pl_bodies = [];
 var pl_orbits = [];
+
 
 var light2 = new BABYLON.PointLight("Omni0", new BABYLON.Vector3(1, 1, 1), scene);
 light2.intensity = 1.0;
 
 //create Sun
-var sun = new Star(Sun.radius, Sun.mass, Sun.rotationalvel, "M", Sun.radvel, scene, Sun.name);
+var sun = new Star(Sun.radius, Sun.mass, Sun.rotationalvel, "G", Sun.radvel, scene, Sun.name);
     viewing = sun;
-    console.log(sun.mass)
+    console.log(sun.mass);
+    console.log(sun.pos.x);
 
-    //create planets
     for(planet=0; planet<planets.length; planet++) {
         if(planets[planet].radius >= 9) {
-            var pl = new Planet(planets[planet].jrad, planets[planet].mass, star, planets[planet].semi_major, planets[planet].eccentricity, planets[planet].inclination, scene, planets[planet].name)
+            var pl = new Planet(planets[planet].jrad, planets[planet].mass, sun, planets[planet].semi_major, planets[planet].eccentricity, planets[planet].inclination, scene, planets[planet].name)
             pl_bodies.push(pl)
         }
         else {
-            var pl = new Planet(planets[planet].radius, planets[planet].mass, star, planets[planet].semi_major, planets[planet].eccentricity, planets[planet].inclination, scene, planets[planet].name)
+            var pl = new Planet(planets[planet].radius, planets[planet].mass, sun, planets[planet].semi_major, planets[planet].eccentricity, planets[planet].inclination, scene, planets[planet].name)
             pl_bodies.push(pl)
         }
     }
     for(planet=0; planet<planets.length; planet++) {
-        var pl = new Orbit(planets[planet].semi_major, planets[planet].inclination, planets[planet].eccentricity, star.body, scene, planets[planet].name+"_orb")
+        var pl = new Orbit(planets[planet].semi_major, planets[planet].inclination, planets[planet].eccentricity, sun.body, scene, planets[planet].name+"_orb")
         pl_orbits.push(pl)
     }
     sun.calc_habitable(Sun.luminosity, scene);
     var dt = 0.01;
     var t = 0;
 
-      //updating the positions before rendering the scene
-      scene.registerBeforeRender(function() {
-        for(planet=0; planet<pl_bodies.length; planet++) {
-            current = pl_bodies[planet];
-            current.calc_gravity(star);
-            star.calc_gravity(current);
-            for(p=0; p<pl_bodies.length; p++) {
-                if(current != pl_bodies[p]){
-                    current.calc_gravity(pl_bodies[p])
-                }
-            }
-        }
-        for(planet=0; planet<pl_bodies.length; planet++) {
-            pl_bodies[planet].move(dt)
-        }
-        star.move(dt)
-        light.position = star.body.position;
-        camera.setTarget(star.body.position)
-        t += dt;
-    });
+    // //updating the positions before rendering the scene
+    // scene.registerBeforeRender(function() {
+    //     for(planet=0; planet<pl_bodies.length; planet++) {
+    //         current = pl_bodies[planet]
+    //         current.calc_gravity(sun)
+    //         star.calc_gravity(current)
+    //         for(p=0; p<pl_bodies.length; p++) {
+    //             if(current != pl_bodies[p]){
+    //                 current.calc_gravity(pl_bodies[p])
+    //             }
+    //         }
+    //     }
+    //     for(planet=0; planet<pl_bodies.length; planet++) {
+    //         pl_bodies[planet].move(dt)
+    //     }
+    //     star.move(dt)
+    //     light.position = star.body.position;
+    //     camera.setTarget(star.body.position);
+    //     t += dt;
+    // })
 
-// Enable VR
-var vrHelper = scene.createDefaultVRExperience({createDeviceOrientationCamera:false, useXR: true});
-vrHelper.enableTeleportation({floorMeshes: [environment.ground]});
+    // Enable VR
+    var vrHelper = scene.createDefaultVRExperience({createDeviceOrientationCamera:false, useXR: true});
+    vrHelper.enableTeleportation({floorMeshes: [ground]});
 
 
    </script>
